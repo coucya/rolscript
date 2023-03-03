@@ -1,0 +1,7 @@
+/.VSCodeCounter
+/.vscode
+/.cargo
+/target
+/test
+/tool
+/profile

@@ -1,0 +1,141 @@
+
+UnicodeChar             ::= ...         
+NameUnicodeChar         ::= 除了 ~!@#$%^&+-*/\|=;:'",.(){}[]<>?
+NonNumNameUnicodeChar   ::= 除了 [0-9] ~!@#$%^&+-*/\|=;:'",.(){}[]<>?
+
+EscapeChar      ::= [\n\r\t\\\"]
+
+NewLineChar     ::= [\n\r(\r\n)]
+BlankChar       ::= [\t\n\r(\r\n)]
+
+DecNum          ::= 0-9
+NonZeroDecNum   ::= 1-9
+HexNum          ::= [a-fA-F]
+DecLiteral      ::= -?(0-9)+
+HexLiteral      ::= -?(0x|0X)[0-9a-fA-F]+
+
+IntLiteral      ::= DecLiteral | HexLiteral
+FloatLiteral    ::= [0-9]+\.+[0-9]+
+
+StringLiteral   ::= "(UnicodeChar | EscapeChar)*"
+
+Name            ::= NonNumNameUnicodeChar NameUnicodeChar*
+
+Comment         ::= "#" UnicodeChar NewLineChar
+
+Void            ::= 
+
+Program         ::= ( "public" FunctionDef ";"?
+                    | "public" TypeDef ";"?
+                    | "public" Ident "=" Expr ";"
+                    | NonRetStat
+                    | Comment*
+                    )*
+
+# 如果该条目表达式部分最后为"}"，则分号则是可选的，否则必须存在分号。
+NonRetStat      ::= | ";" | Expr ";"
+                    | IfStat                    # | IfExpr ";"
+                    | WhileStat                 # | WhileExpr ";"
+                    | ForStat                   # | ForExpr ";'
+Stat            ::= | ";" | Expr ";"
+                    | IfStat                    # | IfExpr ";"
+                    | WhileStat                 # | WhileExpr ";"
+                    | ForStat                   # | ForExpr ";'
+                    | "return" Expr? ";"
+
+Expr            ::= | Name "=>" Comment* Expr
+                    | "(" ParametList? ")" "=>" Comment* Expr
+                    | IfExpr
+                    | WhileExpr
+                    | ForExpr
+                    | FunctionDef
+                    | TypeDef
+                    | Var "=" Expr
+                    | BinExpr
+
+IfStat          ::= "if" "(" Expr ")" Comment* Stat Comment*
+                    ("else" Comment* Stat ) )?
+IfExpr          ::= "if" "(" Expr ")" Comment* Expr Comment*
+                    ("else" Comment* Expr) )?
+
+WhileStat       ::= "while" "(" Expr ")" Comment* Stat
+WhileExpr       ::= "while" "(" Expr ")" Comment* Expr
+
+ForStat         ::= "for" "(" Name ":" Expr ")" Comment* Stat
+ForExpr         ::= "for" "(" Name ":" Expr ")" Comment* Expr
+
+FunctionDef     ::= "function" Name "(" ParametList? ")" Comment* BlockExpr
+
+OverloadOp      ::= | ArithOp
+                    | "!" | "~"
+                    | "<=>" | "=="
+                    | "(" ")"               # function call
+                    | "[" "]" | "[" "]" "=" 
+                    | "[" "new" "]"         # [new], Constructor
+                    | "[" "destory" "]"     # [destory]
+                    | "[" "str" "]"         # [str], to_string
+                    | "[" "hash" "]"        # [hash], hash
+                    | "[" "iter" "]"        # [iter], iter 
+                    | "[" "next" "]"        # [next], next
+OverloadOpDef   ::= "function" OverloadOp "(" ParametList? ")" Comment* BlockExpr
+TypeDef         ::= "type" Name "{"
+                        ( "public" FunctionDef ";"?
+                        | "public" Name = Expr ";"  
+                        | OverloadOpDef ";"
+                        | NonRetStat 
+                        | Comment*
+                        )*
+                    "}"
+
+### BinaryExpr  ::= BinaryExpr (ArithOp | CmpOp) BinaryExpr | PowExpr
+BinaryExpr      ::= PowExpr BinaryExpr_
+BinaryExpr_     ::= (ArithOp | CmpOp) BinaryExpr BinaryExpr_ | Void
+
+PowExpr         ::= UnaryExpr ("**" PowExpr)?
+
+UnaryExpr       ::= ("!" | "~") UnaryExpr | Atom
+
+
+Atom            ::= | IntLiteral | FloatLiteral | StringLiteral 
+                    | BlockExpr
+                    | TupleExpr
+                    | ArrayExpr 
+                    | MapExpr 
+                    | PrefixExpr
+
+BlockExpr       ::= "{" (Comment | Stat)* Expr? "}"
+
+Var             ::= PrefixExpr Suffix | Name
+
+PrefixExpr      ::= | "(" Expr ")"
+                    | PrefixExpr "(" ArgsList? ")"            # function call
+                    | PrefixExpr "." Name "(" ArgsList? ")"   # method call
+                    | PrefixExpr "::" Name "(" ArgsList? ")"  # attr call
+                    | PrefixExpr Suffix                       # => Var
+                    | Name                                    # => Var
+
+PrefixExpr      ::= | "(" Expr ")" PrefixExpr_
+                    | Name PrefixExpr_
+PrefixExpr_     ::= | "(" ArgsList ")" PrefixExpr_
+                    | "." Name "(" ArgsList ")" PrefixExpr_
+                    | "::" Name "(" ArgsList ")" PrefixExpr_
+                    | Suffix PrefixExpr_
+                    | Void
+
+Suffix          ::= "[" Expr "]" | "." Name | "::" Name   
+
+TupleExpr       ::=  "(" Expr "," ")" | "(" Expr ("," Expr)+ ")"
+
+ArrayExpr       ::= "[" "]" | "[" Expr ("," Expr)* "]"
+
+MapField        ::= ( Name | StringLiteral | "[" Expr "]" ) ":" Expr
+MapExpr         ::= "{" "}" | "{" MapField ("," MapField)* "}"
+
+ArithOp         ::= | "||" | "&&" 
+                    | "|" | "^" | "&" | "<<" | ">>" 
+                    | "+" | "-" | "*" | "/" | "//" | "%"                # | "**"
+CmpOp           ::= | "<=>" | "<" | ">" | "<=" | ">=" | "==" | "!=" 
+
+
+ParametList     ::= Name ("," Name)*
+ArgsList        ::= Expr ("," Expr)*
